@@ -1,0 +1,22 @@
+[
+  { "id": 1, "name": "Reading" },
+  { "id": 2, "name": "Gaming" },
+  { "id": 3, "name": "Traveling" },
+  { "id": 4, "name": "Cooking" },
+  { "id": 5, "name": "Photography" },
+  { "id": 6, "name": "Writing" },
+  { "id": 7, "name": "Cycling" },
+  { "id": 8, "name": "Hiking" },
+  { "id": 9, "name": "Swimming" },
+  { "id": 10, "name": "Running" },
+  { "id": 11, "name": "Watching Movies" },
+  { "id": 12, "name": "Listening to Music" },
+  { "id": 13, "name": "Drawing" },
+  { "id": 14, "name": "Painting" },
+  { "id": 15, "name": "Coding" },
+  { "id": 16, "name": "Gardening" },
+  { "id": 17, "name": "Fishing" },
+  { "id": 18, "name": "Playing Sports" },
+  { "id": 19, "name": "Dancing" },
+  { "id": 20, "name": "Yoga" }
+]
