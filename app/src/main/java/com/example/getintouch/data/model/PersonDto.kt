@@ -11,5 +11,7 @@ data class PersonDto(
     val description: String,
     val instagram: String,
     val linkedin: String,
-    val profileUrl: String
+    val profileUrl: String,
+    val email: String,
+    val role: String,
 )

@@ -8,5 +8,6 @@ data class PersonUi(
     val description: String,
     val instagram: String,
     val linkedin: String,
-    val profileUrl: String
+    val profileUrl: String,
+    val role: String,
 )

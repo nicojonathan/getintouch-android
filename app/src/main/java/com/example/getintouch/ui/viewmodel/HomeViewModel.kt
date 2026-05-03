@@ -124,7 +124,8 @@ class HomeViewModel(
             description = "Halo, nama saya John Doe. Saya belajar dari department engineering, dan hobby saya adalah membaca buku self-development dan bermain game.",
             instagram = "@john.doe",
             linkedin = "@johndoe",
-            profileUrl = "https://picsum.photos/id/1005/400/400"
+            profileUrl = "https://picsum.photos/id/1005/400/400",
+            role = "admin"
         )
     }
 }

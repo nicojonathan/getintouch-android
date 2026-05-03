@@ -183,7 +183,8 @@ fun PersonDetailPreview() {
         description = "Test test test",
         instagram = "@john.doe",
         linkedin = "@john.doe",
-        profileUrl = "https://cdn.sejutacita.id/dealls-blog-cms/software_developer_vs_software_engineer_1ff36c15f7.jpg"
+        profileUrl = "https://cdn.sejutacita.id/dealls-blog-cms/software_developer_vs_software_engineer_1ff36c15f7.jpg",
+        role = "admin"
     )
     
     PersonDetailScreen(person = personMock, onClickBack = {})

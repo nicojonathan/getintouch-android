@@ -1,6 +1,7 @@
 package com.example.getintouch.data.repository
 
 import android.content.Context
+import com.example.getintouch.data.api.ApiClient
 import com.example.getintouch.data.model.PersonDto
 import com.example.getintouch.ui.model.PersonUi
 import kotlinx.serialization.json.Json
@@ -10,7 +11,6 @@ class PersonRepository(
     private val hobbyRepository: HobbyRepository,
     private val departmentRepository: DepartmentRepository
 ) {
-
     fun loadPersons(): List<PersonUi> {
         val json = context.assets.open("persons.json")
             .bufferedReader()
@@ -30,7 +30,8 @@ class PersonRepository(
                 description = it.description,
                 instagram = it.instagram,
                 linkedin = it.linkedin,
-                profileUrl = it.profileUrl
+                profileUrl = it.profileUrl,
+                role = it.role,
             )
         }
     }
