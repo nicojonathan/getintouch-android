@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -61,13 +62,28 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.getintouch.BuildConfig
+import com.example.getintouch.R
+import com.example.getintouch.data.local.AuthPreferences
+import com.example.getintouch.data.repository.AuthRepository
+import com.example.getintouch.data.repository.NotificationRepository
+import com.example.getintouch.ui.viewmodel.SessionViewModel
+import com.example.getintouch.ui.viewmodel.SessionViewModelFactory
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onPersonCardClick: (Int) -> Unit) {
     val persons = viewModel.persons
     val departments = viewModel.departments
     val hobbies = viewModel.hobbies
+
     var searchText by remember { mutableStateOf("") }
     var seeAllDepartment by remember { mutableStateOf(false) }
     var seeAllHobby by remember { mutableStateOf(false) }
@@ -122,6 +138,16 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onPerson
             }
 
             PeopleGrid(persons, onPersonCardClick)
+
+//            Button(
+//                onClick = {
+//                    CoroutineScope(Dispatchers.IO).launch {
+//                        viewModel.onUpdateFcmToken()
+//                    }
+//                }
+//            ) {
+//                Text("Test FCM Sync")
+//            }
         }
 
         if (seeAllDepartment) {
@@ -162,7 +188,26 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, onPerson
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
-    MainScreen(LocalContext.current)
+    val context = LocalContext.current
+
+    val authPreferences = remember {
+        AuthPreferences(context)
+    }
+    val repo = remember {
+        AuthRepository()
+    }
+    val departmentRepository = remember {
+        DepartmentRepository(context)
+    }
+    val hobbyRepository = remember {
+        HobbyRepository(context)
+    }
+
+    val sessionViewModel: SessionViewModel = viewModel(
+        factory = SessionViewModelFactory(authPreferences, repo, departmentRepository, hobbyRepository, null)
+    )
+
+    MainScreen(context, sessionViewModel = sessionViewModel)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -345,8 +390,17 @@ fun PersonCard(
             .clickable { onClick() }
     ) {
         // Background Image
+        val imageUrl =
+            if (BuildConfig.ENV == "development") {
+                BuildConfig.BASE_URL + person.profileUrl.removePrefix("/")
+            } else {
+                person.profileUrl
+            }
+
         AsyncImage(
-            model = person.profileUrl,
+            model = imageUrl,
+            placeholder = painterResource(R.drawable.default_profile),
+            error = painterResource(R.drawable.default_profile),
             contentDescription = "${person.name} profile",
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize()
@@ -377,7 +431,7 @@ fun PersonCard(
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = person.department,
+                text = person.department.name,
                 color = Color.White,
                 style = MaterialTheme.typography.bodySmall
             )

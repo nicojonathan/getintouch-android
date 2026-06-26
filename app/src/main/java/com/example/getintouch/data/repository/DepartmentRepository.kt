@@ -1,34 +1,87 @@
 package com.example.getintouch.data.repository
 
 import android.content.Context
-import com.example.getintouch.data.model.DepartmentDto
-import com.example.getintouch.ui.model.DepartmentUi
-import kotlinx.serialization.json.Json
+import android.util.Log
+import com.example.getintouch.data.api.AddDeleteDepartmentResponse
+import com.example.getintouch.data.api.ApiClient
+import com.example.getintouch.data.api.ApiResponse
+import com.example.getintouch.data.api.GetDepartmentsResponse
 
 class DepartmentRepository(private val context: Context) {
-    private fun loadDepartments(): List<DepartmentDto> {
-        val json = context.assets.open("departments.json")
-            .bufferedReader()
-            .use { it.readText() }
-
-        return Json.decodeFromString<List<DepartmentDto>>(json)
-    }
-
-    private val departmentMap: Map<Int, DepartmentDto> by lazy {
-        loadDepartments().associateBy { it.id }
-    }
-
-    fun getDepartmentName(id: Int): String? {
-        return departmentMap[id]?.name
-    }
-
-    fun getDepartments(): List<DepartmentUi> {
-        return loadDepartments().map {
-            DepartmentUi(
-                id = it.id,
-                name = it.name,
-                isSelected = false
-            )
+    fun loadDepartments(
+        token: String?,
+        inviteToken: String?
+    ): ApiResponse<GetDepartmentsResponse> {
+        Log.e("Token: ", "${token}")
+        val json = if (inviteToken != null) {
+            """
+        {
+          "token":"$token",
+          "inviteToken":"$inviteToken"
         }
+        """.trimIndent()
+        } else {
+            """
+        {
+          "token":"$token"
+        }
+        """.trimIndent()
+        }
+
+        val endpoint = if (token != null) {
+            "departments/all"
+        } else {
+            "departments/guest/all"
+        }
+
+        Log.e("Endpoint DEPT: ", "${endpoint}")
+
+        return ApiClient.post<GetDepartmentsResponse>(
+            endpoint,
+            json,
+            token
+        )
+    }
+
+    fun addDepartment(
+        token: String?,
+        departmentName: String
+    ): ApiResponse<AddDeleteDepartmentResponse> {
+        val json =
+            """
+        {
+          "token":"$token",
+          "name":"$departmentName"
+        }
+        """.trimIndent()
+
+        val endpoint = "departments/add"
+
+        return ApiClient.post<AddDeleteDepartmentResponse>(
+            endpoint,
+            json,
+            token
+        )
+    }
+
+    fun removeDepartmentById(
+        token: String?,
+        departmentId: Int
+    ): ApiResponse<AddDeleteDepartmentResponse> {
+        val json =
+            """
+        {
+          "token":"$token",
+          "id":"$departmentId"
+        }
+        """.trimIndent()
+
+        val endpoint = "departments/delete"
+
+        return ApiClient.post<AddDeleteDepartmentResponse>(
+            endpoint,
+            json,
+            token
+        )
     }
 }

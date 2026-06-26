@@ -1,9 +1,11 @@
 package com.example.getintouch.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,7 +44,9 @@ fun SignUpScreen(
     isLoading: Boolean,
     errorMessage: String,
     showErrorMessage: Boolean,
-    onSignUp: (String, String, String, String, String) -> Unit
+    onSignUp: (String, String, String, String, String) -> Unit,
+    onClickLogIn: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var organizationName by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
@@ -52,7 +56,7 @@ fun SignUpScreen(
     val scrollState = rememberScrollState()
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(bottom = 16.dp)
@@ -132,6 +136,23 @@ fun SignUpScreen(
                     Text(text = "Sign Up")
                 }
             }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(text = "Sudah punya akun? ")
+
+                Text(
+                    text = "Masuk",
+                    color = Color.Blue,
+                    modifier = Modifier.clickable {
+                        onClickLogIn()
+                    }
+                )
+            }
         }
     }
 }
@@ -145,6 +166,7 @@ fun SignUpScreenPreview() {
         showErrorMessage = true,
         onSignUp = { organizationName, name, email, phone, password ->
 
-        }
+        },
+        onClickLogIn = {}
     )
 }

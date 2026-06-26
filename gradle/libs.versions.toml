@@ -11,6 +11,10 @@ activityCompose = "1.8.2"
 composeBom = "2024.09.00"
 lifecycle = "2.8.7"
 gson = "2.10.1"
+datastore = "1.0.0"
+socketio = "2.1.0"
+google-services = "4.4.4"
+firebase-bom = "34.14.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,8 +36,13 @@ coil-compose = { module = "io.coil-kt:coil-compose", version = "2.5.0" }
 compose-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+socketio-client = { module = "io.socket:socket.io-client", version.ref = "socketio" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }

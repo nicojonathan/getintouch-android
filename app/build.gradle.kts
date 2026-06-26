@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -19,23 +20,38 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        buildConfigField(
-            "String",
-            "BASE_URL",
-            "\"http://192.168.1.7:3000/\""
-        )
     }
 
     buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "ENV",
+                "\"production\""
+            )
+
+            buildConfigField(
+                "String",
+                "BASE_URL",
+                "\"https://getintouch-backend.vercel.app/\""
+            )
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            buildConfigField(
+                "String",
+                "ENV",
+                "\"production\""
+            )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -79,4 +95,10 @@ dependencies {
     implementation(libs.compose.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.gson)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.socketio.client) {
+        exclude(group = "org.json", module = "json")
+    }
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 }

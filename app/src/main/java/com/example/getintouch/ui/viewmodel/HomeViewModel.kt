@@ -1,5 +1,9 @@
 package com.example.getintouch.ui.viewmodel
 
+import android.content.Context
+import android.os.Build
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.getintouch.data.repository.PersonRepository
@@ -9,14 +13,40 @@ import com.example.getintouch.ui.model.HobbyUi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewModelScope
+import com.example.getintouch.data.datastore.DeviceIdManager
+import com.example.getintouch.data.local.AuthPreferences
 import com.example.getintouch.data.repository.DepartmentRepository
 import com.example.getintouch.data.repository.HobbyRepository
+import com.example.getintouch.data.repository.NotificationRepository
+import com.example.getintouch.ui.UiEvent
+import com.example.getintouch.ui.model.NotificationType
+import com.example.getintouch.ui.model.NotificationUi
+import com.example.getintouch.utils.isSuccess
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class HomeViewModel(
+    private val authPreferences: AuthPreferences,
     private val repository: PersonRepository,
     private val hobbyRepository: HobbyRepository,
-    private val departmentRepository: DepartmentRepository
+    private val departmentRepository: DepartmentRepository,
+    private val notificationRepository: NotificationRepository,
+    private val context: Context
 ) : ViewModel() {
+    var isLoading by mutableStateOf(false)
+    var showErrorMessage by mutableStateOf(false)
+    var errorMessage by mutableStateOf<String>("")
+
     private var allPersons: List<PersonUi> = emptyList()
 
     var persons by mutableStateOf<List<PersonUi>>(emptyList())
@@ -30,17 +60,127 @@ class HomeViewModel(
 
     var selectedPersonForDetail by mutableStateOf<PersonUi?>(null)
 
+    // _namaVar artinya versi internal yang bisa diubah.
+    private val _uiEvent = MutableSharedFlow<UiEvent>()
+
+    // namaVar artinya versi publik yang hanya bisa dibaca
+    val uiEvent = _uiEvent.asSharedFlow()
+
     init {
         loadData()
     }
 
     // initial data from DB
     private fun loadData() {
-        allPersons = repository.loadPersons()
-        persons = allPersons
+        viewModelScope.launch {
+            val token = authPreferences.tokenFlow.first();
 
-        departments = departmentRepository.getDepartments()
-        hobbies = hobbyRepository.getHobbies()
+            if (token.isNullOrBlank()) {
+                errorMessage = "Invalid Access"
+                showErrorMessage = true
+
+            } else {
+                try {
+                    coroutineScope {
+
+                        val membersDeferred = async(Dispatchers.IO) {
+                            repository.loadMembers(token)
+                        }
+
+                        val departmentsDeferred = async(Dispatchers.IO) {
+                            departmentRepository.loadDepartments(token, null)
+                        }
+
+                        val hobbiesDeferred = async(Dispatchers.IO) {
+                            hobbyRepository.loadHobbies(token)
+                        }
+
+                        val membersResponse = membersDeferred.await()
+
+                        val departmentsResponse = departmentsDeferred.await()
+
+                        val hobbiesResponse = hobbiesDeferred.await()
+
+                        // MEMBERS CHECK
+                        if (!isSuccess(membersResponse.statusCode)) {
+                            errorMessage = membersResponse.body.message
+                            showErrorMessage = true
+
+                            return@coroutineScope
+                        }
+
+                        // DEPARTMENTS CHECK
+                        if (!isSuccess(departmentsResponse.statusCode)) {
+                            errorMessage = departmentsResponse.body.message
+                            showErrorMessage = true
+
+                            return@coroutineScope
+                        }
+
+                        // HOBBIES CHECK
+                        if (!isSuccess(hobbiesResponse.statusCode)) {
+                            errorMessage = hobbiesResponse.body.message
+                            showErrorMessage = true
+
+                            return@coroutineScope
+                        }
+
+                        val departmentMap =
+                            departmentsResponse.body.departments.associateBy {
+                                it.id
+                            }
+
+                        val hobbyMap =
+                            hobbiesResponse.body.hobbies.associateBy {
+                                it.id
+                            }
+
+                        persons = membersResponse.body.users.map { person ->
+
+                            PersonUi(
+                                id = person.id,
+                                name = person.name,
+
+                                department = person.department,
+
+                                hobbies = person.hobbies,
+
+                                description = person.description ?: "",
+                                instagram = person.instagram ?: "",
+                                linkedin = person.linkedin ?: "",
+                                profileUrl = person.profileUrl ?: "",
+                                role = person.role,
+                            )
+                        }
+
+                        allPersons = persons;
+
+                        departments = departmentsResponse.body.departments.map { department ->
+                            DepartmentUi(
+                                id = department.id,
+                                name = department.name,
+                                isSelected = false
+                            )
+                        }
+
+                        hobbies = hobbiesResponse.body.hobbies.map { hobby ->
+                            HobbyUi(
+                                id = hobby.id,
+                                name = hobby.name,
+                                isSelected = false,
+                            )
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    errorMessage = e.message ?: ""
+                    showErrorMessage = true
+
+                } finally {
+                    isLoading = false
+                }
+            }
+        }
     }
 
     // filtering
@@ -59,15 +199,15 @@ class HomeViewModel(
                 selectedHobbyNames.isEmpty() -> true
 
                 selectedHobbyNames.size == 1 ->
-                    person.hobbies.any { it in selectedHobbyNames }
+                    person.hobbies.any { it.name in selectedHobbyNames }
 
                 else ->
-                    person.hobbies.containsAll(selectedHobbyNames)
+                    person.hobbies.map { it.name }.containsAll(selectedHobbyNames)
             }
 
             val matchesDepartment =
                 selectedDepartmentNames.isEmpty() ||
-                        person.department in selectedDepartmentNames
+                        person.department.name in selectedDepartmentNames
 
             val matchesSearch =
                 searchInput.isNullOrBlank() ||
@@ -115,17 +255,60 @@ class HomeViewModel(
         }
     }
 
-    fun generateMockLoggedInUser(): PersonUi {
-        return PersonUi(
-            id = 1,
-            name = "John Doe",
-            department = "Engineering",
-            hobbies = listOf("Reading", "Gaming"),
-            description = "Halo, nama saya John Doe. Saya belajar dari department engineering, dan hobby saya adalah membaca buku self-development dan bermain game.",
-            instagram = "@john.doe",
-            linkedin = "@johndoe",
-            profileUrl = "https://picsum.photos/id/1005/400/400",
-            role = "admin"
-        )
+    suspend fun onUpdateFcmToken() {
+        val deviceIdManager = DeviceIdManager(context)
+        val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
+        val deviceId = deviceIdManager.getOrCreateDeviceId()
+
+        val currentToken = FirebaseMessaging
+            .getInstance()
+            .token
+            .await()
+        Log.e("FCM Token for Sync: ", "${currentToken}")
+
+        val token = authPreferences.tokenFlow.first()
+
+        if (!token.isNullOrBlank()) {
+            notificationRepository.syncFcmToken(deviceId, deviceName, currentToken, token)
+        }
+    }
+
+    fun sendNotification(receiverId: Int, receiverName: String) {
+        viewModelScope.launch {
+            val token = authPreferences.tokenFlow.first()
+
+            if (!token.isNullOrBlank()) {
+                try {
+                    val response = withContext(Dispatchers.IO) {
+                        repository.sendNotification(receiverId, token)
+                    }
+
+                    if (isSuccess(response.statusCode)) {
+                        val notification = response.body.notification
+                        var message = ""
+
+                        if (notification.type == NotificationType.SAY_HI.value) {
+                            message = "You said hi to ${receiverName}"
+                        } else if (notification.type == NotificationType.LIKE.value) {
+                            message = "You liked ${receiverName}'s profile" //implemented later
+                        } else if (notification.type == NotificationType.FOLLOW.value) {
+                            message = "You followed ${receiverName}"
+                        }
+
+                        _uiEvent.emit(
+                            UiEvent.ShowToast(message)
+                        )
+                    } else {
+                        _uiEvent.emit(
+                            UiEvent.ShowToast(response.body.message)
+                        )
+                    }
+                } catch (e: Exception) {
+                    _uiEvent.emit(
+                        UiEvent.ShowToast(e.message ?: "")
+                    )
+                }
+            }
+        }
     }
 }

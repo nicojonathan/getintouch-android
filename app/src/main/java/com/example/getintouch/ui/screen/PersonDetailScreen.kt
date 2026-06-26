@@ -1,6 +1,9 @@
 package com.example.getintouch.ui.screen
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -19,12 +23,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,13 +39,39 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.getintouch.ui.model.PersonUi
 import coil.compose.AsyncImage
+import com.example.getintouch.BuildConfig
 import com.example.getintouch.R
+import com.example.getintouch.data.model.DepartmentDto
+import com.example.getintouch.data.model.HobbyDto
+import com.example.getintouch.ui.UiEvent
+import com.example.getintouch.ui.model.DepartmentUi
+import com.example.getintouch.ui.viewmodel.HomeViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 fun PersonDetailScreen(
     person: PersonUi?,
-    onClickBack: (String) -> Unit
+    uiEvent: SharedFlow<UiEvent>,
+    onClickBack: () -> Unit,
+    onSendNotification: (Int, String) -> Unit,
 ) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        uiEvent.collect { event ->
+            when (event) {
+                is UiEvent.ShowToast -> {
+                    Toast.makeText(
+                        context,
+                        event.message,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -55,8 +87,17 @@ fun PersonDetailScreen(
                 )
             )
         ) {
+            val imageUrl =
+                if (BuildConfig.ENV == "development") {
+                    BuildConfig.BASE_URL + person?.profileUrl?.removePrefix("/")
+                } else {
+                    person?.profileUrl
+                }
+
             AsyncImage(
-                model = person?.profileUrl,
+                model = imageUrl,
+                placeholder = painterResource(R.drawable.default_profile),
+                error = painterResource(R.drawable.default_profile),
                 contentDescription = "${person?.name} profile",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize()
@@ -81,21 +122,46 @@ fun PersonDetailScreen(
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = person?.name ?: "",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = person?.name ?: "",
+                        color = Color.White,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = Color.White,
+                                shape = CircleShape
+                            )
+                            .clickable {
+                                if (person != null) {
+                                    onSendNotification(person.id, person.name)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "👋",
+                            fontSize = 24.sp
+                        )
+                    }
+                }
 
                 Text(
-                    text = person?.department ?: "",
+                    text = person?.department?.name ?: "",
                     color = Color.White
                 )
             }
 
             IconButton(
-                onClick = { onClickBack("home") },
+                onClick = onClickBack,
                 modifier = Modifier
                     .padding(top = 40.dp)
                     .padding(start = 20.dp)
@@ -127,7 +193,7 @@ fun PersonDetailScreen(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = item,
+                            text = item.name,
                             color = Color.White
                         )
                     }
@@ -136,7 +202,13 @@ fun PersonDetailScreen(
 
             // Person's Description
             Box {
-                Text(text = person?.description ?: "")
+                Text(
+                    text = if (person?.description.isNullOrEmpty()) {
+                        "-"
+                    } else {
+                        person?.description ?: "-"
+                    }
+                )
             }
 
             // Person's IG
@@ -151,7 +223,13 @@ fun PersonDetailScreen(
                     tint = Color.Unspecified
                 )
 
-                Text(text = person?.instagram ?: "")
+                Text(
+                    text = if (person?.instagram.isNullOrEmpty()) {
+                        "-"
+                    } else {
+                        person?.instagram ?: "-"
+                    }
+                )
             }
 
             // Person's LinkedIn
@@ -166,7 +244,13 @@ fun PersonDetailScreen(
                     tint = Color.Unspecified
                 )
 
-                Text(text = person?.linkedin ?: "")
+                Text(
+                    text = if (person?.linkedin.isNullOrEmpty()) {
+                        "-"
+                    } else {
+                        person?.linkedin ?: "-"
+                    }
+                )
             }
         }
     }
@@ -178,8 +262,8 @@ fun PersonDetailPreview() {
     val personMock = PersonUi(
         id = 0,
         name = "John Doe",
-        department = "Engineering",
-        hobbies = listOf("Reading", "Gaming"),
+        department = DepartmentDto(id = 1, name = ""),
+        hobbies = listOf(HobbyDto(id = 1, name = "")),
         description = "Test test test",
         instagram = "@john.doe",
         linkedin = "@john.doe",
@@ -187,5 +271,5 @@ fun PersonDetailPreview() {
         role = "admin"
     )
     
-    PersonDetailScreen(person = personMock, onClickBack = {})
+    PersonDetailScreen(person = personMock, uiEvent = MutableSharedFlow<UiEvent>(), onClickBack = {}, onSendNotification = { receiverId, receiverName ->  })
 }
