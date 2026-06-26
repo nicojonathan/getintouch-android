@@ -27,13 +27,13 @@ android {
             buildConfigField(
                 "String",
                 "ENV",
-                "\"production\""
+                "\"development\""
             )
 
             buildConfigField(
                 "String",
                 "BASE_URL",
-                "\"https://getintouch-backend.vercel.app/\""
+                "\"https://192.168.xx.xx:3000/\""
             )
         }
 
@@ -48,6 +48,12 @@ android {
                 "String",
                 "ENV",
                 "\"production\""
+            )
+
+            buildConfigField(
+                "String",
+                "BASE_URL",
+                "\"https://getintouch-backend.vercel.app/\""
             )
         }
     }
